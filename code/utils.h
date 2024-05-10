@@ -18,3 +18,16 @@ void exit_msg(char *msg, int err)
     perror(NULL);
   exit(1);
 }
+
+char *concatenate_array(char **array, int nwords)
+{
+  char *result = malloc(LINE_SIZE);
+  result[0] = '\0';
+  for (int i = 1; i < nwords - 1; i++)
+  {
+    strcat(result, array[i]);
+    strcat(result, " ");
+  }
+  strcat(result, array[nwords - 1]);
+  return result;
+}

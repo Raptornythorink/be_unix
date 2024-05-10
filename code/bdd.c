@@ -234,6 +234,19 @@ char *see_user(char *answer, char *user)
   return answer;
 }
 
+int add_log(char **command, int nwords)
+{
+  char *log = concatenate_array(command, nwords);
+  FILE *f = fopen("data.log", "a");
+  if (f == NULL)
+    return -1;
+  fprintf(f, "%s\n", log);
+  free(log);
+  if (fclose(f) == EOF)
+    return -1;
+  return 0;
+}
+
 int main(int argc, char **argv)
 {
   sem_t *semaphore = sem_open(SEM_NAME, O_RDWR);
@@ -242,6 +255,8 @@ int main(int argc, char **argv)
     perror("sem_open");
     exit_msg("sem_open", 1);
   }
+
+  add_log(argv, argc);
 
   if (argc == 6)
   {

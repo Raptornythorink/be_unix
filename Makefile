@@ -8,13 +8,13 @@ all: bdd server client
 bdd: $(SRCDIR)/bdd.c
 	$(CC) $(CFLAGS) -o $(OUTDIR)/bdd $(SRCDIR)/bdd.c
 
-server: $(SRCDIR)/server.c
-	$(CC) $(CFLAGS) -o $(OUTDIR)/server $(SRCDIR)/server.c
+server: $(SRCDIR)/server.c $(SRCDIR)/bdd.c
+	$(CC) $(CFLAGS) -o $(OUTDIR)/bdd $(SRCDIR)/bdd.c && $(CC) $(CFLAGS) -o $(OUTDIR)/server $(SRCDIR)/server.c
 
 client: $(SRCDIR)/client.c
 	$(CC) $(CFLAGS) -o $(OUTDIR)/client $(SRCDIR)/client.c
 
-run_server: $(OUTDIR)/server
+run_server: $(OUTDIR)/server $(OUTDIR)/bdd
 	cd $(OUTDIR) && ./server
 
 run_client: $(OUTDIR)/client

@@ -124,13 +124,49 @@ Data *get_data(char *line)
 // sinon -1
 int add_data(Data *data)
 {
-  FILE *f = fopen("data", "a");
+  int inserted = 0;
+  FILE *f = fopen("data", "r+");
   if (f == NULL)
     return -1;
-  fprintf(f, "%s,%s,%s,%d\n", data->name, data->activity,
-          day_to_string(data->day), data->hour);
+  FILE *tmp = fopen("tmp_add", "w");
+  if (tmp == NULL)
+    return -1;
+  char line[LINE_SIZE];
+  while (fgets(line, LINE_SIZE, f) != NULL)
+  {
+    Data *d = get_data(line);
+    if (inserted == 0 && (d->day > data->day || (d->day == data->day && d->hour >= data->hour)))
+    {
+      if (d->day == data->day && d->hour == data->hour && strcmp(d->name, data->name) == 0)
+      {
+        inserted = 2;
+      }
+      else
+      {
+        char new_line[LINE_SIZE];
+        data_format(new_line, data);
+        fprintf(tmp, "%s", new_line);
+        inserted = 1;
+      }
+    }
+    fprintf(tmp, "%s", line);
+    data_free(d);
+  }
+  if (inserted == 0)
+  {
+    data_format(line, data);
+    fprintf(tmp, "%s", line);
+  }
   if (fclose(f) == EOF)
     return -1;
+  if (fclose(tmp) == EOF)
+    return -1;
+  if (remove("data") != 0)
+    return -1;
+  if (rename("tmp_add", "data") != 0)
+    return -1;
+  if (inserted == 2)
+    return 2;
   return 0;
 }
 
@@ -140,7 +176,7 @@ int delete_data(Data *data)
   FILE *f = fopen("data", "r+");
   if (f == NULL)
     return -1;
-  FILE *tmp = fopen("tmp", "w");
+  FILE *tmp = fopen("tmp_del", "w");
   if (tmp == NULL)
     return -1;
   char line[LINE_SIZE];
@@ -159,7 +195,7 @@ int delete_data(Data *data)
     return -1;
   if (remove("data") != 0)
     return -1;
-  if (rename("tmp", "data") != 0)
+  if (rename("tmp_del", "data") != 0)
     return -1;
   return 0;
 }

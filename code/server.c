@@ -130,21 +130,15 @@ void process_communication(void *new_socket_ptr)
       else
       {
         char successBuffer[REPLY_SIZE];
-        int len = sprintf(successBuffer, "Commande %s effectuée avec succès\n", args[1]);
-        if (len >= 0 && len < REPLY_SIZE)
-        {
-          write(new_socket, successBuffer, REPLY_SIZE);
-        }
+        sprintf(successBuffer, "Commande %s effectuée avec succès\n", args[1]);
+        write(new_socket, successBuffer, REPLY_SIZE);
       }
     }
     else
     {
       char successBuffer[REPLY_SIZE];
-      int len = sprintf(successBuffer, "Commande %s échouée\n", args[1]);
-      if (len >= 0 && len < REPLY_SIZE)
-      {
-        write(new_socket, successBuffer, REPLY_SIZE);
-      }
+      sprintf(successBuffer, "Commande %s échouée\n", args[1]);
+      write(new_socket, successBuffer, REPLY_SIZE);
     }
     free(args);
   }

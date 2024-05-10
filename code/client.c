@@ -28,11 +28,15 @@ int main(int argc, char **argv)
   serv_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
   serv_addr.sin_port = htons(SERVER_PORT);
 
-  send_message(serv_addr, "ADD Gauvin poney lundi 15");
-
   send_message(serv_addr, "ADD Gauvin poney mardi 15");
 
+  send_message(serv_addr, "ADD Gauvin poney lundi 15");
+
+  send_message(serv_addr, "ADD Lancelot réunion lundi 14");
+
   send_message(serv_addr, "ADD Lancelot réunion lundi 16");
+
+  send_message(serv_addr, "ADD Gauvin entraînement lundi 15");
 
   send_message(serv_addr, "SEE");
 
@@ -45,6 +49,8 @@ int main(int argc, char **argv)
   send_message(serv_addr, "DEL Gauvin poney mardi 15");
 
   send_message(serv_addr, "DEL Lancelot réunion lundi 16");
+
+  send_message(serv_addr, "DEL Lancelot réunion lundi 14");
 
   send_message(serv_addr, "SEE");
 

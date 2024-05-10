@@ -1,6 +1,9 @@
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -76,18 +79,24 @@ int configure_socket()
 
 // Passage des commandes à la base de données par un pipe
 // Renvoi des réponses au client par la socket réseau
-void process_communication(int socket_desc)
+void process_communication(void *new_socket_ptr)
 {
-  printf("En attente de connexion\n");
-  struct sockaddr_in address;
-  address.sin_family = AF_INET;
-  address.sin_addr.s_addr = inet_addr(SERVER_IP);
-  address.sin_port = htons(SERVER_PORT);
-  socklen_t addrlen = sizeof(address);
-  int new_socket = accept(socket_desc, (struct sockaddr *)&address, &addrlen);
-  if (new_socket < 0)
-    return;
-  printf("Connection établie\n");
+  sem_t *semaphore = sem_open(SEM_NAME, O_CREAT, 0644, INITIAL_VALUE);
+
+  if (semaphore == SEM_FAILED)
+  {
+    perror("sem_open");
+    exit_msg("sem_open", 1);
+  }
+
+  if (sem_close(semaphore) < 0)
+  {
+    sem_unlink(SEM_NAME);
+    perror("sem_close");
+    exit_msg("sem_close", 1);
+  }
+
+  int new_socket = *(int *)new_socket_ptr;
 
   char message[REPLY_SIZE];
   read(new_socket, message, REPLY_SIZE);
@@ -151,10 +160,30 @@ int main(int argc, char **argv)
   socket_desc = configure_socket();
 
   // Réception des connections réseaux entrantes
+  struct sockaddr_in address;
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = inet_addr(SERVER_IP);
+  address.sin_port = htons(SERVER_PORT);
+  socklen_t addrlen = sizeof(address);
 
   // Gestion des commandes entrantes dans la nouvelle socket
   while (1)
   {
-    process_communication(socket_desc);
+    printf("En attente de connexion\n");
+    int *new_socket_ptr = malloc(sizeof(int));
+    *new_socket_ptr = accept(socket_desc, (struct sockaddr *)&address, &addrlen);
+    if (*new_socket_ptr < 0)
+    {
+      free(new_socket_ptr);
+      continue;
+    }
+    printf("Connection établie\n");
+
+    pthread_t thread_id;
+    if (pthread_create(&thread_id, NULL, process_communication, new_socket_ptr) < 0)
+    {
+      perror("pthread_create");
+      exit_msg("Thread creation failed", 1);
+    }
   }
 }

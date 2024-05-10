@@ -1,3 +1,5 @@
+#include <fcntl.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -185,6 +187,13 @@ char *see_all(char *answer)
 
 int main(int argc, char **argv)
 {
+  sem_t *semaphore = sem_open(SEM_NAME, O_RDWR);
+  if (semaphore == SEM_FAILED)
+  {
+    perror("sem_open");
+    exit_msg("sem_open", 1);
+  }
+
   if (argc == 6)
   {
     Data *d = malloc(sizeof(Data));
@@ -197,26 +206,36 @@ int main(int argc, char **argv)
     char *action = argv[1];
     if (strcmp(action, "ADD") == 0)
     {
+      sem_wait(semaphore);
       int res = -add_data(d);
+      sem_post(semaphore);
+      sem_close(semaphore);
       data_free(d);
       return res;
     }
     else if (strcmp(action, "DEL") == 0)
     {
+      sem_wait(semaphore);
       int res = -delete_data(d);
+      sem_post(semaphore);
+      sem_close(semaphore);
       data_free(d);
       return res;
     }
     else
     {
       data_free(d);
+      sem_close(semaphore);
       return 1;
     }
   }
   else if (argc == 2)
   {
     char *answer = malloc(LINE_SIZE);
+    sem_wait(semaphore);
     int res = strlen(see_all(answer)) == 0;
+    sem_post(semaphore);
+    sem_close(semaphore);
     free(answer);
     return res;
   }

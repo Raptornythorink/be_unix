@@ -185,6 +185,55 @@ char *see_all(char *answer)
   return answer;
 }
 
+char *see_day(char *answer, char *day_string)
+{
+  enum Day day = string_to_day(day_string);
+  if (day == NONE)
+    return "";
+  FILE *f = fopen("data", "r");
+  if (f == NULL)
+    return "";
+  char line[LINE_SIZE];
+  sprintf(answer, "Planning du %s:\n", day_to_string(day));
+  printf("%s", answer);
+  while (fgets(line, LINE_SIZE, f) != NULL)
+  {
+    Data *d = get_data(line);
+    if (d->day == day)
+    {
+      sprintf(answer, "%dh: %s a %s\n", d->hour, d->name, d->activity);
+      printf("%s", answer);
+    }
+    data_free(d);
+  }
+  if (fclose(f) == EOF)
+    return "";
+  return answer;
+}
+
+char *see_user(char *answer, char *user)
+{
+  FILE *f = fopen("data", "r");
+  if (f == NULL)
+    return "";
+  char line[LINE_SIZE];
+  sprintf(answer, "Planning de %s:\n", user);
+  printf("%s", answer);
+  while (fgets(line, LINE_SIZE, f) != NULL)
+  {
+    Data *d = get_data(line);
+    if (strcmp(d->name, user) == 0)
+    {
+      sprintf(answer, "%s %dh: %s\n", day_to_string(d->day), d->hour, d->activity);
+      printf("%s", answer);
+    }
+    data_free(d);
+  }
+  if (fclose(f) == EOF)
+    return "";
+  return answer;
+}
+
 int main(int argc, char **argv)
 {
   sem_t *semaphore = sem_open(SEM_NAME, O_RDWR);
@@ -229,7 +278,7 @@ int main(int argc, char **argv)
       return 1;
     }
   }
-  else if (argc == 2)
+  else if (argc == 2 && strcmp(argv[1], "SEE") == 0)
   {
     char *answer = malloc(LINE_SIZE);
     sem_wait(semaphore);
@@ -239,8 +288,36 @@ int main(int argc, char **argv)
     free(answer);
     return res;
   }
+  else if (argc == 3)
+  {
+    if (strcmp(argv[1], "SEE_DAY") == 0)
+    {
+      char *answer = malloc(LINE_SIZE);
+      sem_wait(semaphore);
+      int res = strlen(see_day(answer, argv[2])) == 0;
+      sem_post(semaphore);
+      sem_close(semaphore);
+      free(answer);
+      return res;
+    }
+    else if (strcmp(argv[1], "SEE_USER") == 0)
+    {
+      char *answer = malloc(LINE_SIZE);
+      sem_wait(semaphore);
+      int res = strlen(see_user(answer, argv[2])) == 0;
+      sem_post(semaphore);
+      sem_close(semaphore);
+      free(answer);
+      return res;
+    }
+    else
+    {
+      return 1;
+    }
+  }
   else
   {
+    sem_close(semaphore);
     return 1;
   }
   return 0;

@@ -19,22 +19,13 @@ char **parse(char *line)
   char **res = malloc(7 * sizeof(char *));
   res[0] = bdd_bin;
 
-  char *arg0 = strtok(line, "\n");
-  if (strcmp(arg0, "SEE") == 0)
-  {
-    res[1] = arg0;
-    res[2] = NULL;
-    return res;
-  }
-
   char *arg1 = strtok(line, " ");
   res[1] = arg1;
-
   char *arg2 = strtok(NULL, " ");
   res[2] = arg2;
   if (arg2 == NULL)
   {
-    arg1[strlen(arg1) - 1] = '\0';
+    arg1[strlen(arg1)] = '\0';
     return res;
   }
 
@@ -42,7 +33,7 @@ char **parse(char *line)
   res[3] = arg3;
   if (arg3 == NULL)
   {
-    arg2[strlen(arg2) - 1] = '\0';
+    arg2[strlen(arg2)] = '\0';
     return res;
   }
 
@@ -50,7 +41,7 @@ char **parse(char *line)
   res[4] = arg4;
   if (arg4 == NULL)
   {
-    arg3[strlen(arg3) - 1] = '\0';
+    arg3[strlen(arg3)] = '\0';
     return res;
   }
 
@@ -111,6 +102,7 @@ void process_communication(void *new_socket_ptr)
     dup2(pipefd[1], STDOUT_FILENO);
     close(pipefd[1]);
     execvp(args[0], args);
+    free(args);
   }
   else if (pid < 0)
   {
@@ -124,31 +116,37 @@ void process_communication(void *new_socket_ptr)
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
     {
       close(pipefd[1]);
-      if (strcmp(args[1], "SEE") == 0)
+      if (strcmp(args[1], "SEE") == 0 || strcmp(args[1], "SEE_DAY") == 0 || strcmp(args[1], "SEE_USER") == 0)
       {
         char replyBuffer[REPLY_SIZE];
         int nbytes = read(pipefd[0], replyBuffer, REPLY_SIZE - 1);
         if (nbytes >= 0)
         {
           replyBuffer[nbytes] = '\0';
+          write(new_socket, replyBuffer, REPLY_SIZE);
         }
         close(pipefd[0]);
-
-        write(new_socket, replyBuffer, REPLY_SIZE);
       }
       else
       {
         char successBuffer[REPLY_SIZE];
-        sprintf(successBuffer, "Commande %s effectuée avec succès\n", args[1]);
-        write(new_socket, successBuffer, REPLY_SIZE);
+        int len = sprintf(successBuffer, "Commande %s effectuée avec succès\n", args[1]);
+        if (len >= 0 && len < REPLY_SIZE)
+        {
+          write(new_socket, successBuffer, REPLY_SIZE);
+        }
       }
     }
     else
     {
       char successBuffer[REPLY_SIZE];
-      sprintf(successBuffer, "Commande %s échouée\n", args[1]);
-      write(new_socket, successBuffer, REPLY_SIZE);
+      int len = sprintf(successBuffer, "Commande %s échouée\n", args[1]);
+      if (len >= 0 && len < REPLY_SIZE)
+      {
+        write(new_socket, successBuffer, REPLY_SIZE);
+      }
     }
+    free(args);
   }
 }
 

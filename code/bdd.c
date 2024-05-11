@@ -7,6 +7,10 @@
 #include "bdd.h"
 #include "utils.h"
 
+sem_t *reader_sem;
+sem_t *writer_sem;
+sem_t *log_sem;
+
 // Nom du fichier contenant les données
 static const char *DATA = "data";
 
@@ -285,14 +289,29 @@ int add_log(char **command, int nwords)
 
 int main(int argc, char **argv)
 {
-  sem_t *semaphore = sem_open(SEM_NAME, O_RDWR);
-  if (semaphore == SEM_FAILED)
+  sem_t *reader_sem = sem_open(READER_SEM_NAME, O_RDWR);
+  if (reader_sem == SEM_FAILED)
+  {
+    perror("sem_open");
+    exit_msg("sem_open", 1);
+  }
+  sem_t *writer_sem = sem_open(WRITER_SEM_NAME, O_RDWR);
+  if (writer_sem == SEM_FAILED)
+  {
+    perror("sem_open");
+    exit_msg("sem_open", 1);
+  }
+  sem_t *log_sem = sem_open(LOG_SEM_NAME, O_RDWR);
+  if (log_sem == SEM_FAILED)
   {
     perror("sem_open");
     exit_msg("sem_open", 1);
   }
 
+  sem_wait(log_sem);
   add_log(argv, argc);
+  sem_post(log_sem);
+  sem_close(log_sem);
 
   if (argc == 6)
   {
@@ -306,36 +325,63 @@ int main(int argc, char **argv)
     char *action = argv[1];
     if (strcmp(action, "ADD") == 0)
     {
-      sem_wait(semaphore);
+      sem_wait(writer_sem);
+      sem_wait(reader_sem);
+      int value;
+      while (1)
+      {
+        sem_getvalue(reader_sem, &value);
+        if (value == MAX_READER - 1)
+        {
+          break;
+        }
+      }
       int res = -add_data(d);
-      sem_post(semaphore);
-      sem_close(semaphore);
+      sem_post(reader_sem);
+      sem_post(writer_sem);
+      sem_close(reader_sem);
+      sem_close(writer_sem);
       data_free(d);
       return res;
     }
     else if (strcmp(action, "DEL") == 0)
     {
-      sem_wait(semaphore);
+      sem_wait(writer_sem);
+      sem_wait(reader_sem);
+      int value;
+      while (1)
+      {
+        sem_getvalue(reader_sem, &value);
+        if (value == MAX_READER - 1)
+        {
+          break;
+        }
+      }
       int res = -delete_data(d);
-      sem_post(semaphore);
-      sem_close(semaphore);
+      sem_post(reader_sem);
+      sem_post(writer_sem);
+      sem_close(reader_sem);
+      sem_close(writer_sem);
       data_free(d);
-      return res;
     }
     else
     {
       data_free(d);
-      sem_close(semaphore);
+      sem_close(reader_sem);
+      sem_close(writer_sem);
       return 1;
     }
   }
   else if (argc == 2 && strcmp(argv[1], "SEE") == 0)
   {
     char *answer = malloc(LINE_SIZE);
-    sem_wait(semaphore);
+    sem_wait(writer_sem);
+    sem_wait(reader_sem);
+    sem_post(writer_sem);
     int res = strlen(see_all(answer)) == 0;
-    sem_post(semaphore);
-    sem_close(semaphore);
+    sem_post(reader_sem);
+    sem_close(reader_sem);
+    sem_close(writer_sem);
     free(answer);
     return res;
   }
@@ -344,31 +390,40 @@ int main(int argc, char **argv)
     if (strcmp(argv[1], "SEE_DAY") == 0)
     {
       char *answer = malloc(LINE_SIZE);
-      sem_wait(semaphore);
+      sem_wait(writer_sem);
+      sem_wait(reader_sem);
+      sem_post(writer_sem);
       int res = strlen(see_day(answer, argv[2])) == 0;
-      sem_post(semaphore);
-      sem_close(semaphore);
+      sem_post(reader_sem);
+      sem_close(reader_sem);
+      sem_close(writer_sem);
       free(answer);
       return res;
     }
     else if (strcmp(argv[1], "SEE_USER") == 0)
     {
       char *answer = malloc(LINE_SIZE);
-      sem_wait(semaphore);
+      sem_wait(writer_sem);
+      sem_wait(reader_sem);
+      sem_post(writer_sem);
       int res = strlen(see_user(answer, argv[2])) == 0;
-      sem_post(semaphore);
-      sem_close(semaphore);
+      sem_post(reader_sem);
+      sem_close(reader_sem);
+      sem_close(writer_sem);
       free(answer);
       return res;
     }
     else
     {
+      sem_close(reader_sem);
+      sem_close(writer_sem);
       return 1;
     }
   }
   else
   {
-    sem_close(semaphore);
+    sem_close(reader_sem);
+    sem_close(writer_sem);
     return 1;
   }
   return 0;

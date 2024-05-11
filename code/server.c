@@ -4,13 +4,31 @@
 #include <netinet/ip.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <signal.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "utils.h"
 
+int socket_desc;
+sem_t *reader_sem;
+sem_t *writer_sem;
+sem_t *log_sem;
 char *bdd_bin = "./bdd";
+
+void signal_handler(int signal)
+{
+  if (signal == SIGINT)
+  {
+    sem_unlink(READER_SEM_NAME);
+    sem_unlink(WRITER_SEM_NAME);
+    sem_unlink(LOG_SEM_NAME);
+    close(socket_desc);
+    exit_msg("Server stopped", 0);
+  }
+}
 
 // On prépare les arguments qui seront envoyés à bdd
 // ADD toto poney lundi 3 -> { "./bdd", "ADD", "toto", "poney", lundi", "3", NULL }
@@ -72,17 +90,41 @@ int configure_socket()
 // Renvoi des réponses au client par la socket réseau
 void process_communication(void *new_socket_ptr)
 {
-  sem_t *semaphore = sem_open(SEM_NAME, O_CREAT, 0644, INITIAL_VALUE);
-
-  if (semaphore == SEM_FAILED)
+  reader_sem = sem_open(READER_SEM_NAME, O_CREAT, 0644, MAX_READER);
+  if (reader_sem == SEM_FAILED)
   {
     perror("sem_open");
     exit_msg("sem_open", 1);
   }
-
-  if (sem_close(semaphore) < 0)
+  if (sem_close(reader_sem) < 0)
   {
-    sem_unlink(SEM_NAME);
+    sem_unlink(READER_SEM_NAME);
+    perror("sem_close");
+    exit_msg("sem_close", 1);
+  }
+
+  writer_sem = sem_open(WRITER_SEM_NAME, O_CREAT, 0644, 1);
+  if (writer_sem == SEM_FAILED)
+  {
+    perror("sem_open");
+    exit_msg("sem_open", 1);
+  }
+  if (sem_close(writer_sem) < 0)
+  {
+    sem_unlink(WRITER_SEM_NAME);
+    perror("sem_close");
+    exit_msg("sem_close", 1);
+  }
+
+  log_sem = sem_open(LOG_SEM_NAME, O_CREAT, 0644, 1);
+  if (log_sem == SEM_FAILED)
+  {
+    perror("sem_open");
+    exit_msg("sem_open", 1);
+  }
+  if (sem_close(log_sem) < 0)
+  {
+    sem_unlink(LOG_SEM_NAME);
     perror("sem_close");
     exit_msg("sem_close", 1);
   }
@@ -146,7 +188,7 @@ void process_communication(void *new_socket_ptr)
 
 int main(int argc, char **argv)
 {
-  int socket_desc;
+  signal(SIGINT, signal_handler);
 
   // Configuration de la socket serveur
   socket_desc = configure_socket();

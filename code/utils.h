@@ -1,4 +1,3 @@
-#include <semaphore.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -7,8 +6,10 @@ const char *SERVER_IP = "127.0.0.1"; // Adresse localhost (interface interne)
 #define LINE_SIZE 100
 #define REPLY_SIZE 2000
 #define DEBUG 0
-#define SEM_NAME "/semaphore"
-#define INITIAL_VALUE 1
+#define READER_SEM_NAME "/reader-sem"
+#define WRITER_SEM_NAME "/writer-sem"
+#define LOG_SEM_NAME "/log-sem"
+#define MAX_READER 10
 
 // Renvoie un message d'erreur en cas de problème
 void exit_msg(char *msg, int err)

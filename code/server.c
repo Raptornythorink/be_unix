@@ -88,7 +88,7 @@ int configure_socket()
 
 // Passage des commandes à la base de données par un pipe
 // Renvoi des réponses au client par la socket réseau
-void process_communication(void *new_socket_ptr)
+void *process_communication(void *new_socket_ptr)
 {
   reader_sem = sem_open(READER_SEM_NAME, O_CREAT, 0644, MAX_READER);
   if (reader_sem == SEM_FAILED)
@@ -161,7 +161,7 @@ void process_communication(void *new_socket_ptr)
       if (strcmp(args[1], "SEE") == 0 || strcmp(args[1], "SEE_DAY") == 0 || strcmp(args[1], "SEE_USER") == 0)
       {
         char replyBuffer[REPLY_SIZE];
-        int nbytes = read(pipefd[0], replyBuffer, REPLY_SIZE - 1);
+        ssize_t nbytes = read(pipefd[0], replyBuffer, REPLY_SIZE - 1);
         if (nbytes >= 0)
         {
           replyBuffer[nbytes] = '\0';
@@ -184,9 +184,11 @@ void process_communication(void *new_socket_ptr)
     }
     free(args);
   }
+
+  return NULL;
 }
 
-int main(int argc, char **argv)
+int main()
 {
   signal(SIGINT, signal_handler);
 
@@ -214,7 +216,7 @@ int main(int argc, char **argv)
     printf("Connection établie\n");
 
     pthread_t thread_id;
-    if (pthread_create(&thread_id, NULL, process_communication, new_socket_ptr) < 0)
+    if (pthread_create(&thread_id, NULL, *process_communication, new_socket_ptr) < 0)
     {
       perror("pthread_create");
       exit_msg("Thread creation failed", 1);

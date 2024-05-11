@@ -21,7 +21,7 @@ void send_message(struct sockaddr_in serv_addr, char *message)
   close(socket_desc);
 }
 
-int main(int argc, char **argv)
+int main()
 {
   struct sockaddr_in serv_addr;
   serv_addr.sin_family = AF_INET;

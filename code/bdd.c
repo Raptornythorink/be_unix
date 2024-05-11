@@ -13,6 +13,9 @@ sem_t *log_sem;
 
 // Nom du fichier contenant les données
 static const char *DATA = "data";
+static const char *LOG = "data.log";
+static const char *TMP_ADD = "tmp_add";
+static const char *TMP_DEL = "tmp_del";
 
 // Retourne une string à partir d'un Day
 char *day_to_string(enum Day d)
@@ -33,7 +36,7 @@ char *day_to_string(enum Day d)
     return "Samedi";
   case SUN:
     return "Dimanche";
-  case NONE:
+  default:
     return "Not a day";
   }
 }
@@ -45,8 +48,8 @@ enum Day string_to_day(char *dd)
   char d[LINE_SIZE];
   strcpy(d, dd);
   // Conversion en minuscule
-  for (int i = 0; i < strlen(d); i++)
-    d[i] = tolower(d[i]);
+  for (size_t i = 0; i < strlen(d); i++)
+    d[i] = (char)tolower((int)d[i]);
 
   if (strcmp("lundi", d) == 0)
     return MON;
@@ -62,8 +65,7 @@ enum Day string_to_day(char *dd)
     return SAT;
   else if (strcmp("dimanche", d) == 0)
     return SUN;
-  else
-    return NONE;
+  return NONE;
 }
 
 // Libère la mémoire d'un pointeur vers Data
@@ -100,24 +102,36 @@ Data *get_data(char *line)
 
   parse = strtok(l, ",");
   if (parse == NULL)
+  {
+    free(l);
     exit_msg(error_msg, 0);
+  }
   data->name = malloc(strlen(parse) + 1);
   strcpy(data->name, parse);
 
   parse = strtok(NULL, ",");
   if (parse == NULL)
+  {
+    free(l);
     exit_msg(error_msg, 0);
+  }
   data->activity = malloc(strlen(parse) + 1);
   strcpy(data->activity, parse);
 
   parse = strtok(NULL, ",");
   if (parse == NULL)
+  {
+    free(l);
     exit_msg(error_msg, 0);
+  }
   data->day = string_to_day(parse);
 
   parse = strtok(NULL, "\n");
   if (parse == NULL)
+  {
+    free(l);
     exit_msg(error_msg, 0);
+  }
   data->hour = atoi(parse);
   free(l);
 
@@ -129,10 +143,10 @@ Data *get_data(char *line)
 int add_data(Data *data)
 {
   int inserted = 0;
-  FILE *f = fopen("data", "r+");
+  FILE *f = fopen(DATA, "r+");
   if (f == NULL)
     return -1;
-  FILE *tmp = fopen("tmp_add", "w");
+  FILE *tmp = fopen(TMP_ADD, "w");
   if (tmp == NULL)
     return -1;
   char line[LINE_SIZE];
@@ -165,9 +179,9 @@ int add_data(Data *data)
     return -1;
   if (fclose(tmp) == EOF)
     return -1;
-  if (remove("data") != 0)
+  if (remove(DATA) != 0)
     return -1;
-  if (rename("tmp_add", "data") != 0)
+  if (rename(TMP_ADD, DATA) != 0)
     return -1;
   if (inserted == 2)
     return 2;
@@ -177,10 +191,10 @@ int add_data(Data *data)
 // Enlève la donnée _data_ de la base de donnée
 int delete_data(Data *data)
 {
-  FILE *f = fopen("data", "r+");
+  FILE *f = fopen(DATA, "r+");
   if (f == NULL)
     return -1;
-  FILE *tmp = fopen("tmp_del", "w");
+  FILE *tmp = fopen(TMP_DEL, "w");
   if (tmp == NULL)
     return -1;
   char line[LINE_SIZE];
@@ -197,9 +211,9 @@ int delete_data(Data *data)
     return -1;
   if (fclose(tmp) == EOF)
     return -1;
-  if (remove("data") != 0)
+  if (remove(DATA) != 0)
     return -1;
-  if (rename("tmp_del", "data") != 0)
+  if (rename(TMP_DEL, DATA) != 0)
     return -1;
   return 0;
 }
@@ -207,7 +221,7 @@ int delete_data(Data *data)
 // Affiche le planning
 char *see_all(char *answer)
 {
-  FILE *f = fopen("data", "r");
+  FILE *f = fopen(DATA, "r");
   if (f == NULL)
     return "";
   char line[LINE_SIZE];
@@ -230,7 +244,7 @@ char *see_day(char *answer, char *day_string)
   enum Day day = string_to_day(day_string);
   if (day == NONE)
     return "";
-  FILE *f = fopen("data", "r");
+  FILE *f = fopen(DATA, "r");
   if (f == NULL)
     return "";
   char line[LINE_SIZE];
@@ -253,7 +267,7 @@ char *see_day(char *answer, char *day_string)
 
 char *see_user(char *answer, char *user)
 {
-  FILE *f = fopen("data", "r");
+  FILE *f = fopen(DATA, "r");
   if (f == NULL)
     return "";
   char line[LINE_SIZE];
@@ -277,7 +291,7 @@ char *see_user(char *answer, char *user)
 int add_log(char **command, int nwords)
 {
   char *log = concatenate_array(command, nwords);
-  FILE *f = fopen("data.log", "a");
+  FILE *f = fopen(LOG, "a");
   if (f == NULL)
     return -1;
   fprintf(f, "%s\n", log);
@@ -363,12 +377,13 @@ int main(int argc, char **argv)
       sem_close(reader_sem);
       sem_close(writer_sem);
       data_free(d);
+      return res;
     }
     else
     {
-      data_free(d);
       sem_close(reader_sem);
       sem_close(writer_sem);
+      data_free(d);
       return 1;
     }
   }

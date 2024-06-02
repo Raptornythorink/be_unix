@@ -18,6 +18,7 @@ sem_t *writer_sem;
 sem_t *log_sem;
 char *bdd_bin = "./bdd";
 
+// Fonction de gestion des signaux, permet de fermer les sémaphores et la socket
 void signal_handler(int signal)
 {
   if (signal == SIGINT)
@@ -25,6 +26,9 @@ void signal_handler(int signal)
     sem_unlink(READER_SEM_NAME);
     sem_unlink(WRITER_SEM_NAME);
     sem_unlink(LOG_SEM_NAME);
+    sem_destroy(reader_sem);
+    sem_destroy(writer_sem);
+    sem_destroy(log_sem);
     close(socket_desc);
     exit_msg("Server stopped", 0);
   }
@@ -81,7 +85,7 @@ int configure_socket()
   address.sin_port = htons(SERVER_PORT);
   if (bind(socket_desc, (struct sockaddr *)&address, sizeof(address)) < 0)
     exit_msg("bind", 1);
-  if (listen(socket_desc, 3) < 0)
+  if (listen(socket_desc, MAX_READER) < 0)
     exit_msg("listen", 1);
   return socket_desc;
 }
@@ -90,6 +94,7 @@ int configure_socket()
 // Renvoi des réponses au client par la socket réseau
 void *process_communication(void *new_socket_ptr)
 {
+  // Gestion des sémaphores
   reader_sem = sem_open(READER_SEM_NAME, O_CREAT, 0644, MAX_READER);
   if (reader_sem == SEM_FAILED)
   {
@@ -138,7 +143,7 @@ void *process_communication(void *new_socket_ptr)
   int pipefd[2];
   pipe(pipefd);
   pid_t pid = fork();
-  if (pid == 0)
+  if (pid == 0) // Processus fils
   {
     close(pipefd[0]);
     dup2(pipefd[1], STDOUT_FILENO);
@@ -146,16 +151,16 @@ void *process_communication(void *new_socket_ptr)
     execvp(args[0], args);
     free(args);
   }
-  else if (pid < 0)
+  else if (pid < 0) // Erreur
   {
     perror("fork");
     exit_msg("Commande échouée", 1);
   }
-  else
+  else // Processus père
   {
     int status;
     waitpid(pid, &status, 0);
-    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) // Commande réussie
     {
       close(pipefd[1]);
       if (strcmp(args[1], "SEE") == 0 || strcmp(args[1], "SEE_DAY") == 0 || strcmp(args[1], "SEE_USER") == 0)
@@ -165,7 +170,7 @@ void *process_communication(void *new_socket_ptr)
         if (nbytes >= 0)
         {
           replyBuffer[nbytes] = '\0';
-          write(new_socket, replyBuffer, REPLY_SIZE);
+          write(new_socket, replyBuffer, REPLY_SIZE); // Transmet la réponse au client
         }
         close(pipefd[0]);
       }
@@ -190,6 +195,10 @@ void *process_communication(void *new_socket_ptr)
 
 int main()
 {
+  sem_init(reader_sem, 0, MAX_READER);
+  sem_init(writer_sem, 0, 1);
+  sem_init(log_sem, 0, 1);
+
   signal(SIGINT, signal_handler);
 
   // Configuration de la socket serveur

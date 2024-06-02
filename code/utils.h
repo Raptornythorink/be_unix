@@ -20,6 +20,7 @@ void exit_msg(char *msg, int err)
   exit(1);
 }
 
+// Concatène les mots d'un tableau de chaînes de caractères
 char *concatenate_array(char **array, int nwords)
 {
   char *result = malloc(LINE_SIZE);

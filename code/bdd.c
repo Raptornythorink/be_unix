@@ -142,7 +142,7 @@ Data *get_data(char *line)
 // sinon -1
 int add_data(Data *data)
 {
-  int inserted = 0;
+  int inserted = 0; // inserted = 0 -> pas encore inséré; 1 -> inséré; 2 -> déjà présent
   FILE *f = fopen(DATA, "r+");
   if (f == NULL)
     return -1;
@@ -153,6 +153,7 @@ int add_data(Data *data)
   while (fgets(line, LINE_SIZE, f) != NULL)
   {
     Data *d = get_data(line);
+    // On insère la donnée dans l'ordre croissant
     if (inserted == 0 && (d->day > data->day || (d->day == data->day && d->hour >= data->hour)))
     {
       if (d->day == data->day && d->hour == data->hour && strcmp(d->name, data->name) == 0)
@@ -201,6 +202,7 @@ int delete_data(Data *data)
   while (fgets(line, LINE_SIZE, f) != NULL)
   {
     Data *d = get_data(line);
+    // On réécrit toutes les lignes sauf celle qu'on veut supprimer
     if (strcmp(data->name, d->name) != 0 || strcmp(data->activity, d->activity) != 0 || data->day != d->day || data->hour != d->hour)
     {
       fprintf(tmp, "%s", line);
@@ -239,6 +241,7 @@ char *see_all(char *answer)
   return answer;
 }
 
+// Affiche le planning d'un jour
 char *see_day(char *answer, char *day_string)
 {
   enum Day day = string_to_day(day_string);
@@ -265,6 +268,7 @@ char *see_day(char *answer, char *day_string)
   return answer;
 }
 
+// Affiche le planning d'un utilisateur
 char *see_user(char *answer, char *user)
 {
   FILE *f = fopen(DATA, "r");
@@ -288,6 +292,7 @@ char *see_user(char *answer, char *user)
   return answer;
 }
 
+// Ajoute une ligne de log
 int add_log(char **command, int nwords)
 {
   char *log = concatenate_array(command, nwords);
@@ -322,13 +327,15 @@ int main(int argc, char **argv)
     exit_msg("sem_open", 1);
   }
 
+  // On ajoute la commande dans le log
   sem_wait(log_sem);
   add_log(argv, argc);
   sem_post(log_sem);
   sem_close(log_sem);
 
-  if (argc == 6)
+  if (argc == 6) // ADD ou DEL
   {
+    // On crée une structure Data à partir des arguments
     Data *d = malloc(sizeof(Data));
     d->name = malloc(strlen(argv[2]));
     strcpy(d->name, argv[2]);
@@ -337,6 +344,7 @@ int main(int argc, char **argv)
     d->day = string_to_day(argv[4]);
     d->hour = atoi(argv[5]);
     char *action = argv[1];
+
     if (strcmp(action, "ADD") == 0)
     {
       sem_wait(writer_sem);
@@ -400,7 +408,7 @@ int main(int argc, char **argv)
     free(answer);
     return res;
   }
-  else if (argc == 3)
+  else if (argc == 3) // SEE_DAY ou SEE_USER
   {
     if (strcmp(argv[1], "SEE_DAY") == 0)
     {
@@ -435,7 +443,7 @@ int main(int argc, char **argv)
       return 1;
     }
   }
-  else
+  else // Commande inconnue
   {
     sem_close(reader_sem);
     sem_close(writer_sem);

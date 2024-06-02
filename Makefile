@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -pthread -Wall -Wextra -Wpedantic -Wformat=2 -Wcast-align -Wconversion -Wnull-dereference
+CFLAGS = -pthread -Wall -Wextra -Wpedantic -Wformat=2 -Wcast-align -Wconversion -Wnull-dereference -Wno-incompatible-pointer-types
 SRCDIR = ./code
 OUTDIR = ./output
 

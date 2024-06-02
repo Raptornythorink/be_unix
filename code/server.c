@@ -26,9 +26,9 @@ void signal_handler(int signal)
     sem_unlink(READER_SEM_NAME);
     sem_unlink(WRITER_SEM_NAME);
     sem_unlink(LOG_SEM_NAME);
-    sem_destroy(reader_sem);
-    sem_destroy(writer_sem);
-    sem_destroy(log_sem);
+    sem_destroy(&reader_sem);
+    sem_destroy(&writer_sem);
+    sem_destroy(&log_sem);
     close(socket_desc);
     exit_msg("Server stopped", 0);
   }
@@ -195,9 +195,9 @@ void *process_communication(void *new_socket_ptr)
 
 int main()
 {
-  sem_init(reader_sem, 0, MAX_READER);
-  sem_init(writer_sem, 0, 1);
-  sem_init(log_sem, 0, 1);
+  sem_init(&reader_sem, 0, MAX_READER);
+  sem_init(&writer_sem, 0, 1);
+  sem_init(&log_sem, 0, 1);
 
   signal(SIGINT, signal_handler);
 
